@@ -1,0 +1,19 @@
+services:
+  anvil:
+    build:
+      context: .
+      dockerfile: ./docker/anvil/develop.Dockerfile
+    tty: true
+    ports:
+      - 8545:8545
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/develop.Dockerfile
+    tty: true
+    volumes:
+      - .:/application
+    ports:
+      - 3000:3000 # frontend
+      - 4943:4943 # icp
