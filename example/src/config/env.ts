@@ -1,9 +1,13 @@
+import type { Address } from 'viem';
+
 type AppEnvType = 'development' | 'production' | 'test';
 type ServiceEnvType = 'frontend';
 type WalletConnectProjectIdType = string;
+type JpycAddressType = Address;
 
 interface EnvironmentConfig {
 	VITE_WALLETCONNECT_PROJECT_ID: WalletConnectProjectIdType;
+	VITE_JPYC_ADRESS: JpycAddressType;
 }
 
 type RequiredEnvVars = {
@@ -22,6 +26,7 @@ const requiredEnvVars: RequiredEnvVars = {
 
 const defaultValues: EnvironmentConfig = {
 	VITE_WALLETCONNECT_PROJECT_ID: '',
+	VITE_JPYC_ADRESS: '' as Address,
 };
 
 export const APP_ENV: AppEnvType = (function () {
@@ -48,4 +53,17 @@ export const WALLETCONNECT_PROJECT_ID: WalletConnectProjectIdType = (function ()
 		throw new Error('VITE_WALLETCONNECT_PROJECT_ID is not defined');
 	}
 	return env as WalletConnectProjectIdType;
+})();
+
+export const JPYC_ADRESS: JpycAddressType = (function () {
+	const requiredEnvs = requiredEnvVars[SERVICE_ENV][APP_ENV];
+	if (!requiredEnvs.includes('VITE_JPYC_ADRESS')) {
+		return defaultValues.VITE_JPYC_ADRESS;
+	}
+
+	const env = import.meta.env.VITE_JPYC_ADRESS;
+	if (!env) {
+		throw new Error('VITE_JPYC_ADRESS is not defined');
+	}
+	return env as JpycAddressType;
 })();
