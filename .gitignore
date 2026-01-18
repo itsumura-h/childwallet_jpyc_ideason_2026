@@ -21,6 +21,7 @@ node_modules/
 dist/
 .svelte-kit/
 .pnpm-store/
+.diff
 
 # environment variables
 .env
