@@ -5,7 +5,7 @@ services:
       dockerfile: ./docker/anvil/develop.Dockerfile
     tty: true
     ports:
-      - 8545:8545
+      - 18545:8545
 
   app:
     build:
@@ -15,5 +15,5 @@ services:
     volumes:
       - .:/application
     ports:
-      - 3000:3000 # frontend
-      - 4943:4943 # icp
+      - 13000:3000 # frontend
+      - 14943:4943 # icp

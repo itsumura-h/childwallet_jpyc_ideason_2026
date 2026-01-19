@@ -1,0 +1,31 @@
+{
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite --host 0.0.0.0 --port 3000",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@rainbow-me/rainbowkit": "^2.2.10",
+		"@tailwindcss/vite": "^4.1.18",
+		"@tanstack/react-query": "^5.90.19",
+		"preact": "^10.26.9",
+		"preact-iso": "^2.11.1",
+		"preact-render-to-string": "^6.6.5",
+		"tailwindcss": "^4.1.18",
+		"viem": "~2.44.4",
+		"wagmi": "^3.3.2"
+	},
+	"devDependencies": {
+		"@preact/preset-vite": "^2.10.2",
+		"daisyui": "^5.5.14",
+		"eslint": "^9.39.2",
+		"eslint-config-preact": "^2.0.0",
+		"typescript": "^5.9.3",
+		"vite": "^7.0.4"
+	},
+	"eslintConfig": {
+		"extends": "preact"
+	}
+}

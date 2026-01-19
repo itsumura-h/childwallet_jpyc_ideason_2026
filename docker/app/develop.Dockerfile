@@ -40,5 +40,16 @@ ENV PATH $PATH:/root/.node/bin
 RUN curl -fsSL https://get.pnpm.io/install.sh | bash -
 ENV PATH $PATH:/root/.local/share/pnpm
 
+# foundry
+RUN curl -L https://foundry.paradigm.xyz | bash
+ENV PATH=$PATH:/root/.foundry/bin
+RUN foundryup
+
+# mcp diagnostics extension
+# https://github.com/newbpydev/mcp-diagnostics-extension/releases/latest
+ARG MCP_DIAGNOSTICS_EXTENSION_VERSION=1.4.1
+RUN curl -OL https://github.com/newbpydev/mcp-diagnostics-extension/releases/download/v${MCP_DIAGNOSTICS_EXTENSION_VERSION}/mcp-diagnostics-extension-${MCP_DIAGNOSTICS_EXTENSION_VERSION}.vsix
+
+
 RUN git config --global --add safe.directory /application
 WORKDIR /application
