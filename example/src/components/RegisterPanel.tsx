@@ -1,47 +1,20 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { formatUnits, isAddress, parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
-
-import { ERC20_ABI } from '../config/erc20';
-import { TOKEN_PRESETS } from '../config/tokens';
+import { formatUnits, parseUnits } from 'viem';
+import { useConnection } from 'wagmi';
+import { JPYC_ADDRESS } from '../config/env';
 import { buildErc20TransferUri, buildQrImageUrl } from '../utils/qr';
+import { useJpycContract } from '../config/contract';
 
 export function RegisterPanel() {
-	const { address, chain } = useAccount();
+	const { address, chain } = useConnection();
 	const [amount, setAmount] = useState('');
-	const [tokenAddress, setTokenAddress] = useState('');
-	const [tokenSymbol, setTokenSymbol] = useState('TOKEN');
-	const [tokenDecimals, setTokenDecimals] = useState(18);
 	const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+	const tokenSymbol = 'JPYC';
+	const tokenDecimals = 18;
 
-	useEffect(() => {
-		if (!chain?.id) {
-			return;
-		}
-		const preset = TOKEN_PRESETS[chain.id];
-		if (!preset) {
-			return;
-		}
-		setTokenAddress(preset.address);
-		setTokenSymbol(preset.symbol);
-		setTokenDecimals(preset.decimals);
-	}, [chain?.id]);
+	const canReadBalance = Boolean(address && JPYC_ADDRESS);
 
-	const tokenAddressValue = isAddress(tokenAddress)
-		? (tokenAddress as `0x${string}`)
-		: undefined;
-	const canReadBalance = Boolean(address && tokenAddressValue);
-
-	const { data: balance, refetch, isFetching, error } = useReadContract({
-		address: tokenAddressValue,
-		abi: ERC20_ABI,
-		functionName: 'balanceOf',
-		args: address ? [address] : undefined,
-		query: {
-			enabled: canReadBalance,
-			refetchOnWindowFocus: false,
-		},
-	});
+	const jpycContract = useJpycContract({ chainId: chain?.id });
 
 	useEffect(() => {
 		if (!canReadBalance) {
@@ -53,7 +26,7 @@ export function RegisterPanel() {
 		const schedule = () => {
 			timeoutId = window.setTimeout(async () => {
 				try {
-					await refetch();
+					await jpycContract.readBalance();
 				} finally {
 					if (active) {
 						schedule();
@@ -70,13 +43,13 @@ export function RegisterPanel() {
 				clearTimeout(timeoutId);
 			}
 		};
-	}, [canReadBalance, refetch]);
+	}, [canReadBalance, jpycContract.readBalance]);
 
 	useEffect(() => {
-		if (balance !== undefined) {
+		if (jpycContract.balance !== null) {
 			setLastUpdated(new Date());
 		}
-	}, [balance]);
+	}, [jpycContract.balance]);
 
 	const parsedAmount = useMemo(() => {
 		if (!amount) {
@@ -90,15 +63,15 @@ export function RegisterPanel() {
 	}, [amount, tokenDecimals]);
 
 	const qrUri = useMemo(() => {
-		if (!address || !tokenAddressValue || !parsedAmount) {
+		if (!address || !JPYC_ADDRESS || !parsedAmount) {
 			return '';
 		}
 		return buildErc20TransferUri(
-			tokenAddressValue,
+			JPYC_ADDRESS,
 			address,
 			parsedAmount.toString()
 		);
-	}, [address, tokenAddressValue, parsedAmount]);
+	}, [address, JPYC_ADDRESS, parsedAmount]);
 
 	const qrSrc = useMemo(() => {
 		if (!qrUri) {
@@ -131,48 +104,10 @@ export function RegisterPanel() {
 								value={amount}
 								onInput={(event) => setAmount(event.currentTarget.value)}
 							/>
+							<span class="label-text-alt opacity-70">
+								受取トークン: {tokenSymbol}（{tokenDecimals} decimals）
+							</span>
 						</label>
-
-						<div class="grid gap-4 md:grid-cols-2">
-							<label class="form-control">
-								<span class="label-text">トークンアドレス</span>
-								<input
-									class="input input-bordered font-mono text-xs"
-									type="text"
-									placeholder="0x..."
-									value={tokenAddress}
-									onInput={(event) => setTokenAddress(event.currentTarget.value)}
-								/>
-							</label>
-							<label class="form-control">
-								<span class="label-text">トークンシンボル</span>
-								<input
-									class="input input-bordered"
-									type="text"
-									placeholder="TOKEN"
-									value={tokenSymbol}
-									onInput={(event) => setTokenSymbol(event.currentTarget.value)}
-								/>
-							</label>
-							<label class="form-control">
-								<span class="label-text">トークンDecimals</span>
-								<input
-									class="input input-bordered"
-									type="number"
-									min="0"
-									max="18"
-									value={tokenDecimals}
-									onInput={(event) =>
-										setTokenDecimals(
-											Math.min(
-												18,
-												Math.max(0, Number(event.currentTarget.value) || 0)
-											)
-										)
-									}
-								/>
-							</label>
-						</div>
 					</div>
 
 					<div class="divider">QRコード</div>
@@ -200,7 +135,7 @@ export function RegisterPanel() {
 					) : (
 						<div class="alert alert-info">
 							<span class="text-sm">
-								有効な金額とERC-20トークンアドレスを入力してください。
+								有効な金額を入力してください。
 							</span>
 						</div>
 					)}
@@ -214,12 +149,15 @@ export function RegisterPanel() {
 						<div class="stat">
 							<div class="stat-title">トークン残高</div>
 							<div class="stat-value text-2xl">
-								{balance !== undefined && tokenAddressValue
-									? formatUnits(balance, tokenDecimals)
+								{jpycContract.balance !== null && JPYC_ADDRESS
+									? formatUnits(jpycContract.balance, tokenDecimals)
 									: '--'}
 							</div>
 							<div class="stat-desc">{tokenSymbol}</div>
 						</div>
+					</div>
+					<div class="text-xs opacity-70 break-words">
+						トークンコントラクト: {JPYC_ADDRESS ?? '--'}
 					</div>
 					<div class="text-xs opacity-70">
 						最終更新: {lastUpdated ? lastUpdated.toLocaleTimeString() : '--'}
@@ -227,14 +165,14 @@ export function RegisterPanel() {
 					<div class="flex items-center gap-2">
 						<button
 							class="btn btn-sm btn-primary"
-							disabled={!canReadBalance || isFetching}
-							onClick={() => refetch()}
+							disabled={!canReadBalance || jpycContract.isLoading}
+							onClick={() => jpycContract.readBalance()}
 						>
-							{isFetching ? '更新中...' : '今すぐ更新'}
+							{jpycContract.isLoading ? '更新中...' : '今すぐ更新'}
 						</button>
 						<span class="text-xs opacity-60">10秒ごとに自動更新します。</span>
 					</div>
-					{error ? (
+					{jpycContract.error ? (
 						<div class="alert alert-error">
 							<span class="text-sm">
 								残高の取得に失敗しました。トークンアドレスを確認してください。
@@ -244,7 +182,7 @@ export function RegisterPanel() {
 					{!canReadBalance ? (
 						<div class="alert alert-warning">
 							<span class="text-sm">
-								残高を取得するには有効なERC-20トークンアドレスを設定してください。
+								残高を取得できません。VITE_JPYC_ADDRESS の設定を確認してください。
 							</span>
 						</div>
 					) : null}
