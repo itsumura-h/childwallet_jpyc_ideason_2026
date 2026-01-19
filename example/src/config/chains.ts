@@ -11,16 +11,18 @@ import { http } from 'wagmi';
 
 const DefaultChain = anvil;
 
-// Anvilのカスタム設定 (localhost:8545)
-const anvilChain = {
+// Anvilのカスタム設定 (localhost:18545)
+const anvilRpcUrl = "http://localhost:18545";
+
+const anvilCustom = {
   ...anvil,
   rpcUrls: {
     ...anvil.rpcUrls,
     default: {
-      http: ["http://localhost:18545"],
+      http: [anvilRpcUrl],
     },
     public: {
-      http: ["http://localhost:18545"],
+      http: [anvilRpcUrl],
     },
   },
 } as const;
@@ -35,7 +37,7 @@ const anvilChain = {
  */
 export const WAGMI_CHAINS = [
   sepolia,
-  anvilChain,
+  anvilCustom,
 ] as const;
 
 /**
@@ -45,12 +47,12 @@ export const WAGMI_CHAINS = [
  */
 export const SUPPORTED_CHAINS: Record<number, Chain> = {
   [sepolia.id]: sepolia,
-  [anvil.id]: anvilChain,
+  [anvil.id]: anvilCustom,
 };
 
 export const WAGMI_TRANSPORTS = {
   [sepolia.id]: http(),
-  [anvil.id]: http("http://localhost:18545"),
+  [anvil.id]: http(anvilRpcUrl),
 } as const;
 
 /**
