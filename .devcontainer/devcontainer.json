@@ -1,0 +1,12 @@
+{
+  "customizations": {
+    "cursor": {
+      "extensions": [
+        "openai.chatgpt",
+        "yzhang.markdown-all-in-one",
+        "streetsidesoftware.code-spell-checker",
+        "dfinity-foundation.vscode-motoko"
+      ]
+    }
+  }
+}

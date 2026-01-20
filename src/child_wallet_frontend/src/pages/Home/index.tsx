@@ -1,39 +1,52 @@
-import preactLogo from '../../assets/preact.svg';
-import './style.css';
+import type { UseIcpAuthResult } from '../../hooks/icpAuth';
 
-export function Home() {
+type HomeProps = {
+	auth: UseIcpAuthResult;
+};
+
+export function Home({ auth }: HomeProps) {
 	return (
-		<div class="home">
-			<a href="https://preactjs.com" target="_blank">
-				<img src={preactLogo} alt="Preact logo" height="160" width="160" />
-			</a>
-			<h1>Get Started building Vite-powered Preact Apps </h1>
-			<section>
-				<Resource
-					title="Learn Preact"
-					description="If you're new to Preact, try the interactive tutorial to learn important concepts"
-					href="https://preactjs.com/tutorial"
+		<div class="space-y-6">
+			<section class="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-sky-900/30">
+				<p class="text-sm uppercase tracking-[0.2em] text-sky-300">Session</p>
+				<h1 class="mt-2 text-3xl font-semibold text-white">ログイン中です</h1>
+				<p class="mt-3 text-sm text-white/70">
+					Internet Identityのセッションが有効な間、Child Walletの機能にアクセスできます。
+				</p>
+				<div class="mt-5 rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-sky-100">
+					<span class="text-white/60">Principal:</span>{' '}
+					{auth.principal ?? 'Principalを取得できませんでした'}
+				</div>
+			</section>
+
+			<section class="grid gap-4 md:grid-cols-3">
+				<Card
+					title="ウォレットを確認"
+					body="子ウォレットのEVMアドレスや署名機能にアクセスするための下準備が完了しています。"
 				/>
-				<Resource
-					title="Differences to React"
-					description="If you're coming from React, you may want to check out our docs to see where Preact differs"
-					href="https://preactjs.com/guide/v10/differences-to-react"
+				<Card
+					title="セッションを維持"
+					body="定期的に認証状態をチェックし、セッション切れを検知したら自動的にログイン画面へ戻ります。"
 				/>
-				<Resource
-					title="Learn Vite"
-					description="To learn more about Vite and how you can customize it to fit your needs, take a look at their excellent documentation"
-					href="https://vitejs.dev"
+				<Card
+					title="次の実装"
+					body="バックエンド連携や残高表示など、必要な画面をこのホームから広げていけます。"
 				/>
 			</section>
 		</div>
 	);
 }
 
-function Resource(props) {
+type CardProps = {
+	title: string;
+	body: string;
+};
+
+function Card({ title, body }: CardProps) {
 	return (
-		<a href={props.href} target="_blank" class="resource">
-			<h2>{props.title}</h2>
-			<p>{props.description}</p>
-		</a>
+		<div class="rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/70 via-slate-900 to-slate-950 p-6 shadow-lg shadow-sky-900/30">
+			<h2 class="text-lg font-semibold text-white">{title}</h2>
+			<p class="mt-2 text-sm text-white/70">{body}</p>
+		</div>
 	);
 }
