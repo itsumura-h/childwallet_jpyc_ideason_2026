@@ -1,10 +1,10 @@
 import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, Route, hydrate, prerender as ssr, useLocation } from 'preact-iso';
 
-import { Header } from './components/Header';
 import { useIcpAuth } from './hooks/icpAuth';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { Payment } from './pages/Payment';
 import { NotFound } from './pages/_404';
 import './style.css';
 
@@ -38,21 +38,14 @@ function AppShell() {
 	}, [auth.refresh, auth.isLoading]);
 
 	return (
-		<>
-			<Header
-				isAuthenticated={auth.isAuthenticated}
-				isLoading={auth.isLoading}
-				principal={auth.principal}
-				onLogout={auth.logout}
-			/>
-			<main class="mx-auto max-w-5xl px-4 pb-12 pt-6">
-				<Router>
-					<Route path="/" component={() => <Login auth={auth} />} />
-					<Route path="/home" component={() => <Home auth={auth} />} />
-					<Route default component={NotFound} />
-				</Router>
-			</main>
-		</>
+		<main class="w-full h-screen">
+			<Router>
+				<Route path="/" component={() => <Login auth={auth} />} />
+				<Route path="/home" component={() => <Home auth={auth} />} />
+				<Route path="/payment" component={() => <Payment auth={auth} />} />
+				<Route default component={NotFound} />
+			</Router>
+		</main>
 	);
 }
 

@@ -24,42 +24,42 @@ export function Login({ auth }: LoginProps) {
 	};
 
 	return (
-		<div class="flex min-h-[70vh] items-center justify-center">
-			<div class="w-full max-w-xl rounded-2xl border border-white/10 bg-white/5 p-10 shadow-2xl shadow-sky-900/40 backdrop-blur">
-				<p class="text-xs uppercase tracking-[0.25em] text-sky-300">internet identity</p>
-				<h1 class="mt-3 text-3xl font-semibold text-white">Child Wallet へログイン</h1>
-				<p class="mt-3 text-sm text-white/70">
-					Internet Identityで本人確認を行い、認証済みのセッションを開始します。
-				</p>
+		<div class="min-h-screen w-full bg-gradient-to-b from-purple-400 via-pink-300 to-purple-300 flex flex-col items-center justify-center p-4 safe-area">
+			<div class="w-full max-w-sm">
 
-				<div class="mt-6 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 text-xs text-white/70">
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-white/60">Provider</span>
-						<span class="truncate font-mono text-[11px] text-sky-200">{identityProvider}</span>
+				{/* メインカード */}
+				<div class="bg-white rounded-3xl shadow-2xl p-6 mb-6">
+					<div class="text-center mb-6">
+						<div class="text-5xl mb-3">🔐</div>
+						<h2 class="text-2xl font-bold text-purple-600">ログインしよう</h2>
 					</div>
-					<div class="mt-2 flex items-center justify-between text-white/60">
-						<span>状態</span>
-						<span class="text-white">
-							{auth.isLoading ? '確認中...' : auth.isAuthenticated ? 'ログイン済み' : '未ログイン'}
-						</span>
+
+					{/* ステータス表示 */}
+					<div class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-4 mb-6">
+						<p class="text-sm text-purple-700 font-semibold">
+							{auth.isLoading ? '🔄 確認中...' : auth.isAuthenticated ? '✅ ログイン済み' : '⭕ ログインしてね'}
+						</p>
 					</div>
+
+					{/* ログインボタン */}
+					<button
+						type="button"
+						onClick={handleLogin}
+						disabled={auth.isAuthenticated || auth.isLoading}
+						class={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition transform active:scale-95 ${
+							auth.isAuthenticated || auth.isLoading
+								? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+								: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl'
+						}`}
+					>
+						{auth.isLoading ? '確認中...' : 'ログインする'}
+					</button>
+
+					{/* 説明テキスト */}
+					<p class="text-center text-sm text-gray-600 mt-4">
+						きみだけの おさいふ だよ
+					</p>
 				</div>
-
-				<button
-					type="button"
-					onClick={handleLogin}
-					disabled={auth.isAuthenticated || auth.isLoading}
-					class={`mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-400 px-6 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-sky-700/40 transition ${
-						auth.isAuthenticated || auth.isLoading ? 'cursor-not-allowed opacity-70' : 'hover:-translate-y-0.5'
-					}`}
-				>
-					<span>Internet Identityでログイン</span>
-				</button>
-
-				<ul class="mt-6 space-y-2 text-xs text-white/60">
-					<li>・ログイン済みでトップに戻ると自動でホームへ遷移します。</li>
-					<li>・セッションが切れた場合は自動的にログイン画面に戻ります。</li>
-				</ul>
 			</div>
 		</div>
 	);
