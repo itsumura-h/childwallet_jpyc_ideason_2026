@@ -25,7 +25,7 @@ export const useIcpAuth = (): UseIcpAuthResult => {
   const [authClient, setAuthClient] = useState<AuthClient | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [principal, setPrincipal] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const clientPromiseRef = useRef<Promise<AuthClient> | null>(null);
 
   const refreshSession = useCallback(async (client: AuthClient) => {
@@ -76,23 +76,24 @@ export const useIcpAuth = (): UseIcpAuthResult => {
 
     let cancelled = false;
 
-    ensureAuthClient()
-      .then((client) => {
+    (async () => {
+      try {
+        const client = await ensureAuthClient();
         if (cancelled) {
           return;
         }
-        return refreshSession(client);
-      })
-      .catch((error) => {
+
+        setIsLoading(false);
+        if (!cancelled) {
+          void refreshSession(client);
+        }
+      } catch (error) {
         if (!cancelled) {
           console.error('Failed to initialise auth client:', error);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
           setIsLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

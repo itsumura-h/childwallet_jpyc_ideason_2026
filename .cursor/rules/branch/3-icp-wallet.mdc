@@ -1,0 +1,25 @@
+---
+description: 3-icp-walletブランチでの開発時に読み込む
+alwaysApply: true
+---
+3-icp-walletブランチルール
+===
+
+このブランチで実装することは以下の通りです。
+- Internet IdentityによるログインUIを用意し、未ログイン時はトップでログインを促す
+- 認証状態に応じて`/`と`/home`で適切にリダイレクトさせるルーティングを整備する
+- セッション切れを検知し、ログイン画面へ強制リダイレクトさせる
+
+## 進捗
+- [x] ブランチルールを作成した
+- [ ] ログインUIのデザインと実装を完了した
+- [ ] 認証ガードとルーティングのリダイレクトロジックを実装した
+- [ ] Internet Identityセッション切れ時の動作確認を行った
+
+## 参考資料
+- `src/child_wallet_frontend/src/hooks/icpAuth.ts` にある認証クライアントの作成・リフレッシュ処理
+- DFXローカル環境の場合のIdentity Provider URL: `http://${INTERNET_IDENTITY_CANISTER_ID}.localhost:4943`
+
+## 調査結果・設計まとめ
+- `@icp-sdk/auth`の`AuthClient`を利用し、ブラウザ側で認証状態を確認・維持する
+- `preact-iso`の`Router`と`useLocation`でルート遷移とリダイレクトを行う
