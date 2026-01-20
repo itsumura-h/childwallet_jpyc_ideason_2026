@@ -1,10 +1,12 @@
 import type { UseIcpAuthResult } from '../../hooks/icpAuth';
+import { useEvmAddress } from '../../hooks/useEvmAddress';
 
 type HomeProps = {
 	auth: UseIcpAuthResult;
 };
 
 export function Home({ auth }: HomeProps) {
+	const evm = useEvmAddress(auth);
 	return (
 		<div class="space-y-6">
 			<section class="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-sky-900/30">
@@ -16,6 +18,36 @@ export function Home({ auth }: HomeProps) {
 				<div class="mt-5 rounded-xl border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-sky-100">
 					<span class="text-white/60">Principal:</span>{' '}
 					{auth.principal ?? 'Principalを取得できませんでした'}
+				</div>
+				<div class="mt-3 grid gap-3 md:grid-cols-2">
+					<div class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3">
+						<p class="text-xs uppercase tracking-[0.2em] text-sky-200">EVM Address</p>
+						<p class="mt-2 font-mono text-sm text-white/90">
+							{evm.evmAddress ?? (evm.isLoading ? '取得中...' : '未取得')}
+						</p>
+						<p class="mt-1 text-xs text-white/60">nonce: {evm.nonce}</p>
+					</div>
+					<div class="rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3">
+						<p class="text-xs uppercase tracking-[0.2em] text-sky-200">Public Key</p>
+						<p class="mt-2 font-mono text-xs text-white/70 break-all">
+							{evm.publicKeyHex ?? (evm.isLoading ? '取得中...' : '未取得')}
+						</p>
+					</div>
+				</div>
+				<div class="mt-3 flex items-center gap-3">
+					<button
+						type="button"
+						onClick={() => evm.refresh()}
+						disabled={evm.isLoading}
+						class={`rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 shadow-md transition ${
+							evm.isLoading
+								? 'cursor-not-allowed bg-white/30 text-white/70'
+								: 'bg-gradient-to-r from-sky-500 to-cyan-400 hover:-translate-y-0.5'
+						}`}
+					>
+						{evm.isLoading ? '更新中...' : 'アドレスを再取得'}
+					</button>
+					{evm.error ? <span class="text-xs text-red-300">{evm.error}</span> : null}
 				</div>
 			</section>
 

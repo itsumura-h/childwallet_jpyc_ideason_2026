@@ -4,190 +4,61 @@ import {
   type Hex,
   type LocalAccount,
   type RpcSchema,
-  type SerializeTransactionFn,
-  type SignableMessage,
-  type Signature,
-  type TransactionSerializable,
-  type TypedData,
-  type TypedDataDefinition,
   type WalletClient,
   type HttpTransport,
   createWalletClient,
   http,
-  keccak256,
-  serializeTransaction,
-  hashMessage,
-  serializeSignature,
-  hexToBytes,
 } from 'viem';
 import { toAccount } from 'viem/accounts';
 import { AuthClient } from '@icp-sdk/auth/client';
-import { HttpAgent } from '@icp-sdk/core/agent';
 import type { _SERVICE as TEcdsaBackendService } from '../../../declarations/child_wallet_backend/child_wallet_backend.did';
-import { canisterId as tEcdsaBackendCanisterId, createActor } from '../../../declarations/child_wallet_backend';
+import { createBackendActor } from '../utils/backendActor';
+import { DEFAULT_WALLET_NONCE, publicKeyToEvmAddress, publicKeyToHex } from '../utils/evmAddress';
 
-const createBackendActor = async (authClient: AuthClient): Promise<TEcdsaBackendService> => {
-  const identity = authClient.getIdentity();
-  const agent = await HttpAgent.create({ identity });
-
-  const isDev = import.meta.env.DEV || import.meta.env.MODE !== 'production';
-  if (isDev) {
-    await agent.fetchRootKey();
-  }
-  
-  // The declarations were generated with @dfinity/agent, but we're using @icp-sdk/core/agent
-  // Both HttpAgent implementations are compatible at runtime despite type differences
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const actor = createActor(tEcdsaBackendCanisterId, {
-    agent: agent as any,
-  }) as TEcdsaBackendService;
-  
-  return actor;
-};
-
-const ensurePublicKey = async (actor: TEcdsaBackendService) => {
+const fetchPublicKeyWithFallback = async (
+  actor: TEcdsaBackendService,
+  nonce: number,
+): Promise<Uint8Array | number[]> => {
   try {
-    await actor.getPublicKey();
+    const { publicKey } = await actor.getPublicKey(nonce);
+    return publicKey;
   } catch (error) {
-    console.warn('Failed to fetch existing public key, requesting a new one.', error);
-    await actor.getNewPublicKey();
-  }
-};
-
-const resolveAddress = async (actor: TEcdsaBackendService): Promise<Address> => {
-  const evmAddress = await (async ():Promise<string>=>{
-    try{
-      return await actor.getEvmAddress();
-    } catch (error) {
-      console.warn('Failed to fetch Ethereum address, requesting a new one.', error);
-      // 公開鍵を生成してから、EVMアドレスを再取得
-      await actor.getNewPublicKey();
-      return await actor.getEvmAddress();
+    // 公開鍵が未生成の場合のみ生成を試みる
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('public key not found')) {
+      throw error;
     }
-  })()
 
-  if (!evmAddress) {
-    throw new Error('Failed to resolve Ethereum address from canister.');
+    const { publicKey } = await actor.createPublicKey(nonce);
+    return publicKey;
   }
-  return evmAddress as Address;
 };
 
-const normaliseSignableMessage = (message: SignableMessage): string => {
-  if (typeof message === 'string') {
-    return message;
-  }
+const resolveAddress = async (
+  actor: TEcdsaBackendService,
+  nonce: number = DEFAULT_WALLET_NONCE,
+): Promise<{ address: Address; publicKeyHex: string }> => {
+  const publicKey = await fetchPublicKeyWithFallback(actor, nonce);
+  const address = publicKeyToEvmAddress(publicKey);
+  const publicKeyHex = publicKeyToHex(publicKey);
 
-  if (typeof message.raw === 'string') {
-    throw new Error('Hex-encoded messages are not supported yet.');
-  }
-
-  throw new Error('Binary signable messages are not supported yet.');
+  return { address, publicKeyHex };
 };
 
 const toIcpAccount = async (authClient: AuthClient): Promise<LocalAccount> => {
   const actor = await createBackendActor(authClient);
-  await ensurePublicKey(actor);
-  const address = await resolveAddress(actor);
+  const { address, publicKeyHex } = await resolveAddress(actor, DEFAULT_WALLET_NONCE);
+  console.info('Resolved EVM address from public key:', publicKeyHex);
 
-  const signMessage = async ({
-    message,
-  }: {
-    message: SignableMessage;
-  }): Promise<Hex> => {
-    const hash = hashMessage(message);
-    const hashBytes = hexToBytes(hash);
-    const signature = await actor.signWithEvmWallet(hashBytes);
-    
-    // 0xプレフィックスを削除
-    const sigHex = signature.startsWith('0x') ? signature.slice(2) : signature;
-    
-    // 署名は65バイト (130文字) である必要がある
-    if (sigHex.length !== 130) {
-      throw new Error(`Invalid signature length: ${sigHex.length}, expected 130`);
-    }
-    
-    const r = '0x' + sigHex.slice(0, 64);
-    const s = '0x' + sigHex.slice(64, 128);
-    let v = parseInt(sigHex.slice(128, 130), 16);
-    
-    // Ethereumの署名では、v値は27または28である必要がある
-    // recovery IDが0または1の場合、27を加算する
-    if (v < 27) {
-      v += 27;
-    }
-    
-    console.log('Parsed signature - r:', r, 's:', s, 'v:', v);
-    
-    const sig: Signature = {
-      r: r as Hex,
-      s: s as Hex,
-      v: BigInt(v),
-    };
-    
-    return serializeSignature(sig);
-  };
-
-  const signTransaction = async<
-    TTransactionSerializable extends TransactionSerializable,
-  >(
-    transaction: TTransactionSerializable,
-    args?: {
-      serializer?: SerializeTransactionFn<TTransactionSerializable>;
-    }
-  ): Promise<Hex> => {
-    if (!args?.serializer) {
-      return signTransaction(transaction, {
-        serializer: serializeTransaction,
-      });
-    }
-    const serialized = args.serializer(transaction);
-    const hash = keccak256(serialized as `0x${string}`);
-    const hashBytes = hexToBytes(hash);
-    const signature = await actor.signWithEvmWallet(hashBytes);
-
-    // 0xプレフィックスを削除
-    const sigHex = signature.startsWith('0x') ? signature.slice(2) : signature;
-    
-    // 署名は65バイト (130文字) である必要がある
-    if (sigHex.length !== 130) {
-      throw new Error(`Invalid signature length: ${sigHex.length}, expected 130`);
-    }
-    
-    const r = '0x' + sigHex.slice(0, 64);
-    const s = '0x' + sigHex.slice(64, 128);
-    let v = parseInt(sigHex.slice(128, 130), 16);
-    
-    // Ethereumの署名では、v値は27または28である必要がある
-    // recovery IDが0または1の場合、27を加算する
-    if (v < 27) {
-      v += 27;
-    }
-    
-    console.log('Parsed signature - r:', r, 's:', s, 'v:', v);
-    
-    const sig: Signature = {
-      r: r as Hex,
-      s: s as Hex,
-      v: BigInt(v),
-    };
-    
-    return args.serializer(transaction, sig);
-  };
-
-  const signTypedData = async <
-    typedData extends TypedData | Record<string, unknown>,
-    primaryType extends keyof typedData | 'EIP712Domain' = keyof typedData,
-  >(
-    _typedData: TypedDataDefinition<typedData, primaryType>,
-  ): Promise<Hex> => {
-    throw new Error('Typed data signing is not supported yet for ICP wallet.');
+  const notImplemented = async (): Promise<Hex> => {
+    throw new Error('EVM signing is not implemented yet for the ICP wallet.');
   };
 
   return toAccount({
     address,
-    signMessage,
-    signTransaction,
-    signTypedData,
+    signMessage: notImplemented,
+    signTransaction: notImplemented,
+    signTypedData: notImplemented,
   });
 };
 
