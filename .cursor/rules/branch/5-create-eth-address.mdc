@@ -1,0 +1,31 @@
+---
+description: 5-create-eth-addressブランチでの開発時に読み込む
+alwaysApply: true
+---
+5-create-eth-addressブランチルール
+===
+
+このブランチで実装することは以下の通りです。
+- Internet Identityログイン完了後にバックエンドの`getPublicKey`を叩いてEVMウォレットアドレスを取得する（失敗時は`createPublicKey`を呼び出す）
+- principal+nonce（デフォルト1）で導出した公開鍵をフロント側でEthereum形式アドレスへ変換し、現在利用中のnonceと紐づけて保持する
+- nonceとアドレスを`localStorage`へ永続化し、再ログイン時に読み込んで再利用できるようにする（必要に応じて鍵生成APIを再実行）
+
+## 進捗
+- [x] ブランチルールを作成した
+- [ ] バックエンドAPIのインターフェースとnonceデフォルト値(1)の取り扱い方針を整理した
+- [ ] 公開鍵→EVMアドレス変換の実装手順（圧縮鍵復元・Keccak256・チェックサム化）を確定した
+- [ ] ログイン後の鍵取得フローと`localStorage`永続化のロジック/責務分担(フック・コンポーネント)を設計した
+- [ ] エラーハンドリングと再試行ポリシー（公開鍵未生成・セッション切れ・型不整合）を決定した
+
+## 参考資料
+- `src/child_wallet_backend/libs/ecdsa/ecdsa.mo`（derivation_pathに`caller blob` + `index`を利用）
+- `src/child_wallet_backend/functions/createPublicKey.mo`, `getPublicKey.mo`（鍵の生成・取得ロジック）
+- `src/child_wallet_frontend/src/hooks/icpAuth.ts`, `src/child_wallet_frontend/src/hooks/icpWalletClient.ts`（ログイン・ウォレットクライアント生成フロー）
+- DFINITY管理キャニスターの`ecdsa_public_key`仕様（secp256k1圧縮公開鍵が返却される点に注意）
+
+## 調査結果・設計まとめ
+- 目標フロー: (1) ログイン完了→principal確定 (2) 保存済みnonce/アドレスを`localStorage`から読み込む (3) nonceを指定して`getPublicKey(nonce)`をコールし、失敗時のみ`createPublicKey(nonce)`で生成→再取得 (4) 取得した公開鍵バイト列をフロントでEVMアドレスへ変換し、nonceとともに`localStorage`へ保存する。
+- 既存バックエンドの公開鍵導出は`Principal.toBlob(caller)`と`index`をderivation pathにしたsecp256k1鍵。`getPublicKey`/`createPublicKey`はいずれも`Nat32 index`必須なので、デフォルトnonce=1をフロントで明示的に渡す必要がある（現状TS定義は引数1個の`number`）。`sign`はindex=0固定で署名する実装のため、EVMウォレット用署名APIを追加する際はnonceと揃える設計見直しが必要。
+- 公開鍵→EVMアドレス変換: 管理キャニスターの公開鍵は圧縮形式(33byte, 0x02/0x03 + X)。`@noble/curves/secp256k1`等で圧縮鍵を復元し、非圧縮65byteの先頭0x04を除いた64byte(X||Y)へKeccak256を適用→下位20byteを16進化→`viem`の`checksumAddress`/`getAddress`でチェックサム付きアドレスに整形する。変換時に`Uint8Array`→`0x`prefixed hexへの正規化を挟む。
+- `localStorage`保存案: キー例`child-wallet:evm-address`に`{ principal, nonce, publicKeyHex, evmAddress, updatedAt }`を格納。ログイン時にprincipalが一致すれば再利用し、一致しない/欠損時はAPIで再取得。APIエラーは公開鍵未生成時の`Debug.trap`（文字列）と通信失敗を分岐し、後者のみ再試行・ユーザー通知を行う。
+- フロントの責務分担案: `useIcpAuth`で認証状態を管理→新規フック（例: `useEvmWalletKey`）を用意し、`authClient`/`principal`確定後に鍵取得・保存・変換を実施。`icpWalletClient`生成前にEVMアドレスとnonceを確定させ、ウォレットクライアントが同じnonceを使うようにする。

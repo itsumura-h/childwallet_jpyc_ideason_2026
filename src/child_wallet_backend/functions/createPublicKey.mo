@@ -5,6 +5,7 @@ import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
 import schema "../storage/schema";
 import ecdsa "../libs/ecdsa/ecdsa";
+import Debug "mo:base/Debug";
 
 module {
   private func nat32ToHash(index : Nat32) : Hash.Hash {
@@ -18,8 +19,10 @@ module {
   };
 
   public func invoke(state : schema.State, caller : Principal, index: Nat32) : async schema.PublicKeyReply {
+    Debug.print("=== createPublicKey === caller=" # Principal.toText(caller) # ", index=" # Nat32.toText(index));
     let personKeyList : schema.PublicKeyListForPerson = switch (state.publicKeyList.get(caller)) {
       case (null) {
+        Debug.print("createPublicKey: initialize key map for caller");
         let newList = HashMap.HashMap<Nat32, [Nat8]>(0, Nat32.equal, nat32ToHash);
         state.publicKeyList.put(caller, newList);
         newList;
@@ -29,6 +32,7 @@ module {
 
     let publicKey : [Nat8] = switch (personKeyList.get(index)) {
       case (null) {
+        Debug.print("createPublicKey: generating new key");
         let generated = await ecdsa.public_key(caller, index);
         personKeyList.put(index, generated);
         generated;
@@ -36,8 +40,8 @@ module {
       case (?cached) cached;
     };
 
-    return {
-      publicKey = publicKey;
-    };
+    let reply : schema.PublicKeyReply = { publicKey = publicKey };
+    Debug.print("createPublicKey: done, publicKey length=" # Nat32.toText(Nat32.fromNat(publicKey.size())));
+    return reply;
   };
 };

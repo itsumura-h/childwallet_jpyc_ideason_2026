@@ -13,6 +13,7 @@
   },
   "type": "module",
   "workspaces": [
-    "src/child_wallet_frontend"
+    "src/child_wallet_frontend",
+    "example"
   ]
 }
