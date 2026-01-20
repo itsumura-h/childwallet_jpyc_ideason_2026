@@ -20,6 +20,7 @@ export function Payment({ auth }: PaymentProps) {
 	const [scanStatus, setScanStatus] = useState('カメラを起動しています...');
 	const [scanResult, setScanResult] = useState<string | null>(null);
 	const [rescanKey, setRescanKey] = useState(0);
+	const [manualInput, setManualInput] = useState('');
 
 	useEffect(() => {
 		let html5qrcode: Html5Qrcode | null = null;
@@ -137,6 +138,31 @@ export function Payment({ auth }: PaymentProps) {
 						</button>
 					</div>
 				</div>
+
+					<div class="bg-white border border-purple-100 rounded-2xl p-4 shadow-inner space-y-3">
+						<p class="text-sm font-semibold text-purple-700 text-center">ペイロードを 手入力する</p>
+						<input
+							type="text"
+							value={manualInput}
+							placeholder="ペイロードを入力してね"
+							class="w-full rounded-xl border border-purple-200 px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-purple-300"
+							onInput={(e) => setManualInput((e.target as HTMLInputElement).value)}
+						/>
+						<button
+							type="button"
+							onClick={() => {
+								if (manualInput.trim().length === 0) {
+									setScanStatus('ペイロードを入力してね');
+									return;
+								}
+								setScanResult(manualInput.trim());
+								setScanStatus('手入力のペイロードを設定しました');
+							}}
+							class="w-full py-2 px-3 bg-gradient-to-r from-blue-400 to-purple-400 text-white font-bold rounded-xl active:scale-95 transition transform"
+						>
+							✏️ このペイロードをつかう
+						</button>
+					</div>
 
 				<button
 					type="button"
