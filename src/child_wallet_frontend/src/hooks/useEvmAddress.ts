@@ -98,7 +98,6 @@ export const useEvmAddress = (auth: UseIcpAuthResult): UseEvmAddressResult => {
       }
 
       const targetNonce = nonceOverride ?? DEFAULT_WALLET_NONCE;
-      console.log('[isLoading] SET TRUE - refresh start');
       setIsLoading(true);
       setError(null);
 
@@ -120,12 +119,9 @@ export const useEvmAddress = (auth: UseIcpAuthResult): UseEvmAddressResult => {
         setPublicKeyHex(publicKeyHexValue);
         setEvmAddress(address);
         persist(payload);
-        console.log('[isLoading] SUCCESS - data fetched');
       } catch (fetchError) {
-        console.log('[isLoading] ERROR - ', toErrorMessage(fetchError));
         setError(toErrorMessage(fetchError));
       } finally {
-        console.log('[isLoading] SET FALSE - finally block');
         setIsLoading(false);
       }
     },
@@ -134,7 +130,6 @@ export const useEvmAddress = (auth: UseIcpAuthResult): UseEvmAddressResult => {
 
   useEffect(() => {
     if (!auth.isAuthenticated || !auth.principal || !auth.authClient) {
-      console.log('[isLoading] SET FALSE - unauthenticated');
       setEvmAddress(null);
       setPublicKeyHex(null);
       setError(null);
@@ -145,7 +140,6 @@ export const useEvmAddress = (auth: UseIcpAuthResult): UseEvmAddressResult => {
 
     const stored = loadFromStorage();
     if (stored) {
-      console.log('[isLoading] SET FALSE - loaded from storage');
       setNonce(stored.nonce ?? DEFAULT_WALLET_NONCE);
       setPublicKeyHex(stored.publicKeyHex);
       setEvmAddress(stored.evmAddress);
@@ -154,7 +148,6 @@ export const useEvmAddress = (auth: UseIcpAuthResult): UseEvmAddressResult => {
       return;
     }
 
-    console.log('[isLoading] CALLING refresh - storage miss');
     void refresh(DEFAULT_WALLET_NONCE);
   }, [auth.authClient, auth.isAuthenticated, auth.principal]);
 
