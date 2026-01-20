@@ -11,8 +11,8 @@ import { http } from 'wagmi';
 
 const DefaultChain = anvil;
 
-// Anvilのカスタム設定 (localhost:18545)
-const anvilRpcUrl = "http://localhost:18545";
+// Anvilのカスタム設定 (localhost:8545)
+const anvilRpcUrl = "http://localhost:8545";
 
 const anvilCustom = {
   ...anvil,
