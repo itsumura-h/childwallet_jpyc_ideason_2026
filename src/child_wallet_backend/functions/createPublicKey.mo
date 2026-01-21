@@ -20,6 +20,8 @@ module {
 
   public func invoke(state : schema.State, caller : Principal, index: Nat32) : async schema.PublicKeyReply {
     Debug.print("=== createPublicKey === caller=" # Principal.toText(caller) # ", index=" # Nat32.toText(index));
+    
+    // ステップ1: caller用のMapが存在するか確認
     let personKeyList : schema.PublicKeyListForPerson = switch (state.publicKeyList.get(caller)) {
       case (null) {
         Debug.print("createPublicKey: initialize key map for caller");
@@ -30,14 +32,19 @@ module {
       case (?existing) existing;
     };
 
+    // ステップ2: indexの公開鍵が存在するか確認
     let publicKey : [Nat8] = switch (personKeyList.get(index)) {
       case (null) {
-        Debug.print("createPublicKey: generating new key");
+        Debug.print("createPublicKey: generating new key for index=" # Nat32.toText(index));
         let generated = await ecdsa.public_key(caller, index);
         personKeyList.put(index, generated);
+        Debug.print("createPublicKey: saved to state.publicKeyList[caller][" # Nat32.toText(index) # "]");
         generated;
       };
-      case (?cached) cached;
+      case (?cached) {
+        Debug.print("createPublicKey: returning cached key for index=" # Nat32.toText(index));
+        cached;
+      };
     };
 
     let reply : schema.PublicKeyReply = { publicKey = publicKey };

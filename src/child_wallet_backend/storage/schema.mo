@@ -33,4 +33,12 @@ module {
     publicKeyList : PublicKeyList;
     config : Config;
   };
+
+  // Stable版のデータ型（record型なので stable）
+  public type PublicKeyEntry = (Nat32, [Nat8]);
+  public type PersonKeyListEntry = (Principal, [PublicKeyEntry]);
+  public type StableState = {
+    publicKeyList : [PersonKeyListEntry];
+    config : Config;
+  };
 };

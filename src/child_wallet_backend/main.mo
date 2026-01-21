@@ -14,7 +14,18 @@ persistent actor {
     return msg.caller;
   };
 
-  private transient var storage : storageStore.Storage = storageStore.Storage();
+  // Stable memory: クラスの状態だけを保存
+  private stable var stableState : schema.StableState = {
+    publicKeyList = [];
+    config = {
+      env = #Development;
+      keyName = "dfx_test_key";
+      signCycles = 0;
+    };
+  };
+
+  // Transient: クラスインスタンスはアップグレード後に再構築される
+  private transient var storage : storageStore.Storage = storageStore.restoreFromStable(stableState);
 
   public shared (msg) func createPublicKey(index : Nat32) : async schema.PublicKeyReply {
     return await createPublicKeyFn.invoke(storage.state, msg.caller, index);
@@ -24,11 +35,21 @@ persistent actor {
     return getPublicKeyFn.invoke(storage.state, msg.caller, index);
   };
 
-  public shared (msg) func sign(message : Blob) : async schema.SignatureReply {
-    return await signFn.invoke(msg.caller, message);
+  public shared (msg) func sign(message : Blob, index: Nat32) : async schema.SignatureReply {
+    return await signFn.invoke(storage.state, msg.caller, message, index);
   };
 
-  public shared (msg) func signText(message : Text) : async schema.SignatureReply {
-    return await signTextFn.invoke(msg.caller, message);
+  public shared (msg) func signText(message : Text, index: Nat32) : async schema.SignatureReply {
+    return await signTextFn.invoke(storage.state, msg.caller, message, index);
+  };
+
+  // Pre-upgrade: クラスの状態をstable型に変換
+  system func preupgrade() {
+    stableState := storageStore.toStable(storage);
+  };
+
+  // Post-upgrade: stable型からクラスを再構築
+  system func postupgrade() {
+    storage := storageStore.restoreFromStable(stableState);
   };
 };

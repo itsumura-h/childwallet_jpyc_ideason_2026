@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { Address } from 'viem';
-import type { _SERVICE as TEcdsaBackendService } from '../../../declarations/child_wallet_backend/child_wallet_backend.did';
 import { createBackendActor } from '../utils/backendActor';
 import { DEFAULT_WALLET_NONCE, publicKeyToEvmAddress, publicKeyToHex } from '../utils/evmAddress';
 import type { UseIcpAuthResult } from './icpAuth';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BackendActor = any;
 
 type StoredEvmAddress = {
   principal: string;
@@ -28,7 +30,7 @@ const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 const fetchPublicKeyWithFallback = async (
-  actor: TEcdsaBackendService,
+  actor: BackendActor,
   nonce: number,
 ): Promise<Uint8Array | number[]> => {
   try {

@@ -62,12 +62,18 @@ importers:
       '@icp-sdk/auth':
         specifier: ^5.0.0
         version: 5.0.0(@icp-sdk/core@5.0.0)
+      '@icp-sdk/bindgen':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@icp-sdk/core':
         specifier: ^5.0.0
         version: 5.0.0
       '@noble/curves':
         specifier: ^2.0.1
         version: 2.0.1
+      candid:
+        specifier: link:@icp-sdk/core/candid
+        version: link:@icp-sdk/core/candid
       html5-qrcode:
         specifier: ^2.3.8
         version: 2.3.8
@@ -452,6 +458,10 @@ packages:
     resolution: {integrity: sha512-TaPfdaELT7s0vTIFOmCnlCmhPdL7kABA7+2Q0YNAUWIa/FFiwq6ffGPLvr0U0+2zFLaLQ4l7UCB2zf7vo6PFPQ==}
     peerDependencies:
       '@icp-sdk/core': ^5
+
+  '@icp-sdk/bindgen@0.2.1':
+    resolution: {integrity: sha512-/YXJcYdqb4Qi+c33NVU8BgY4O/ZVqOQy+eYH4fSu5asT5/eAQl5NNgsjMTkhbGknRbxm8N9/ZopzAf2GX0n5lg==}
+    hasBin: true
 
   '@icp-sdk/core@5.0.0':
     resolution: {integrity: sha512-t6iRbdylHG57MicWRpR1uMTFXRW7GCzec6KAg55CBwDHbHLQDKikQ252lmlcEa80DrKa3LPvMKYZEUYjEq5XUQ==}
@@ -982,6 +992,10 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  commander@14.0.2:
+    resolution: {integrity: sha512-TywoWNNRbhoD0BXs1P3ZEScW8W5iKrnbithIl0YH+uCmBd0QpPOA8yc82DS3BIE5Ma6FnBVUsJ7wVUDz4dvOWQ==}
+    engines: {node: '>=20'}
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
@@ -2487,6 +2501,10 @@ snapshots:
       '@icp-sdk/core': 5.0.0
       idb: 7.1.1
 
+  '@icp-sdk/bindgen@0.2.1':
+    dependencies:
+      commander: 14.0.2
+
   '@icp-sdk/core@5.0.0':
     dependencies:
       '@dfinity/cbor': 0.2.2
@@ -2982,6 +3000,8 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
+
+  commander@14.0.2: {}
 
   concat-map@0.0.1: {}
 
