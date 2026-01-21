@@ -6,25 +6,22 @@ import type {
 	Html5QrcodeFullConfig,
 	Html5QrcodeSupportedFormats,
 } from 'html5-qrcode';
-import { 
-	getAddress, 
-	http, 
-	isAddress, 
-	parseAbi, 
-	getContract,
+import {
+	type Address,
+	type Hex,
 	formatUnits,
-	type Address, 
-	type Hex 
+	getAddress,
+	http,
+	isAddress,
 } from 'viem';
-import { anvil } from 'viem/chains';
+import { DEFAULT_RPC_URL, getChainConfig, getRpcUrlForChain, useCurrentChainId } from '../../config/wagmi';
 import { createIcpWalletClient } from '../../hooks/icpWalletClient';
-import { publicClient } from '../../hooks/client';
+import { getPublicClient } from '../../hooks/client';
+import { JPYC_ABI, JPYC_ADDRES_LIST } from '../../hooks/erc20';
 import { useEvmAddress } from '../../hooks/useEvmAddress';
-import { JPYC_ABI } from '../../hooks/erc20';
 
 const QR_REGION_ID = 'payment-qr-reader';
 type Html5QrcodeModule = typeof import('html5-qrcode');
-const DEFAULT_RPC_URL = anvil.rpcUrls.default.http?.[0] ?? 'http://localhost:8545';
 
 type ParsedTransferPayload = {
 	tokenAddress: Address;
@@ -95,6 +92,7 @@ type PaymentProps = {
 
 export function Payment({ auth }: PaymentProps) {
 	const { route } = useLocation();
+	const chainId = useCurrentChainId();
 	const evm = useEvmAddress(auth);
 	const errorLogged = useRef(false);
 	const [scanStatus, setScanStatus] = useState('カメラを起動しています...');
@@ -121,11 +119,25 @@ export function Payment({ auth }: PaymentProps) {
 
 		try {
 			const parsed = parseErc20TransferPayload(scanResult);
+			const chain = getChainConfig(chainId);
+			if (!chain) {
+				throw new Error('このチェーンではJPYCのおくりこみができないよ');
+			}
+
+			const jpycAddress = JPYC_ADDRES_LIST[chain.id];
+			if (!jpycAddress) {
+				throw new Error('このチェーンのJPYCアドレスが設定されていないよ');
+			}
+
+			if (parsed.tokenAddress !== getAddress(jpycAddress)) {
+				throw new Error('JPYCだけがおくれるよ');
+			}
+
 			setParsedPayload(parsed);
 		} catch (err) {
 			setPayloadError(err instanceof Error ? err.message : String(err));
 		}
-	}, [scanResult]);
+	}, [chainId, scanResult]);
 
 	useEffect(() => {
 		let html5qrcode: Html5Qrcode | null = null;
@@ -229,34 +241,107 @@ export function Payment({ auth }: PaymentProps) {
 			return;
 		}
 
+		const chain = getChainConfig(chainId);
+		if (!chain) {
+			setSendError('このチェーンでは送金できないよ');
+			return;
+		}
+
+		const jpycAddress = JPYC_ADDRES_LIST[chain.id];
+		if (!jpycAddress) {
+			setSendError('このチェーンのJPYCアドレスが設定されていないよ');
+			return;
+		}
+
+		const normalizedJpycAddress = getAddress(jpycAddress);
+		if (parsedPayload.tokenAddress !== normalizedJpycAddress) {
+			setSendError('JPYCだけがおくれるよ');
+			return;
+		}
+
+		const rpcUrl = getRpcUrlForChain(chain.id) ?? DEFAULT_RPC_URL;
+
 		setIsSending(true);
 		setSendError(null);
 		setSendStatus('ウォレットを準備しています...');
 
 		try {
+			console.debug('[Payment] Starting wallet client creation with RPC URL:', rpcUrl);
 			const walletClient = await createIcpWalletClient({
 				authClient: auth.authClient,
-				chain: anvil,
-				transport: http(DEFAULT_RPC_URL),
+				chain,
+				transport: http(rpcUrl),
 				nonce: evm.nonce,
 			});
-			const contract = getContract({
-				address: parsedPayload.tokenAddress,
-				abi: JPYC_ABI,
-				client: {
-					public: publicClient,
-					wallet: walletClient,
-				},
-			});
+			console.debug('[Payment] Wallet client created successfully');
 
 			setSendStatus('トランザクションを作成しています...');
-			const hash = await contract.write.transfer([parsedPayload.receiver, parsedPayload.amount]);
+			console.debug('[Payment] Starting transfer operation', {
+				tokenAddress: parsedPayload.tokenAddress,
+				receiver: parsedPayload.receiver,
+				amount: parsedPayload.amount.toString(),
+				fromAddress: evm.evmAddress,
+				nonce: evm.nonce,
+				rpcUrl,
+				chain: chain.name,
+			});
+			
+			console.debug('[Payment] Wallet client account:', walletClient.account?.address);
+			console.debug('[Payment] Wallet client chain:', walletClient.chain?.name);
+			
+			// type assertion を使用して型チェック回避
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const hash = await walletClient.writeContract({
+				address: parsedPayload.tokenAddress,
+				abi: JPYC_ABI,
+				functionName: 'transfer',
+				args: [parsedPayload.receiver, parsedPayload.amount],
+				account: walletClient.account!,
+			} as any);
+			
+			console.debug('[Payment] Transaction hash received:', hash);
 
 			setTxHash(hash);
 			setSendStatus('チェーンに送信したよ。承認を待っています...');
-			await publicClient.waitForTransactionReceipt({ hash });
+			
+			const selectedPublicClient = getPublicClient(chain.id);
+			console.debug('[Payment] Waiting for transaction receipt...', {
+				hash,
+				chain: selectedPublicClient.chain?.name,
+				rpcUrl,
+			});
+			
+			const receipt = await selectedPublicClient.waitForTransactionReceipt({ hash });
+			
+			console.debug('[Payment] Transaction receipt received:', {
+				blockNumber: receipt.blockNumber,
+				blockHash: receipt.blockHash,
+				transactionIndex: receipt.transactionIndex,
+				status: receipt.status,
+				gasUsed: receipt.gasUsed?.toString(),
+			});
+			
 			setSendStatus('送金が完了しました！');
+			route('/home');
 		} catch (error) {
+			console.error('[Payment] Error during transaction:', error);
+			console.error('[Payment] Error type:', error?.constructor?.name);
+			console.error('[Payment] Error stack:', error instanceof Error ? error.stack : 'no stack');
+			
+			if (error instanceof Error) {
+				// ContractFunctionExecutionError の場合、details を確認
+				const errObj = error as any;
+				if (errObj.details) {
+					console.error('[Payment] Error details:', errObj.details);
+				}
+				if (errObj.cause) {
+					console.error('[Payment] Error cause:', errObj.cause);
+				}
+				if (errObj.url) {
+					console.error('[Payment] Error URL:', errObj.url);
+				}
+			}
+			
 			const message = error instanceof Error ? error.message : String(error);
 			setSendError(message);
 			setSendStatus('送金に失敗しました');
@@ -332,17 +417,6 @@ export function Payment({ auth }: PaymentProps) {
 				</div>
 
 				<div class="bg-white border border-purple-100 rounded-2xl p-4 shadow-inner space-y-3">
-					<div class="flex items-center justify-between">
-						<p class="text-sm font-semibold text-purple-700">よみとったペイロード</p>
-						<span class="text-[11px] text-gray-500">
-							{evm.isLoading
-								? 'ウォレットを準備中...'
-								: evm.evmAddress
-									? `送信元: ${evm.evmAddress}`
-									: 'ウォレットをよみこみ中'}
-						</span>
-					</div>
-
 					{evm.error ? (
 						<div class="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">
 							ウォレットの読み込みに失敗したよ: {evm.error}
@@ -356,9 +430,8 @@ export function Payment({ auth }: PaymentProps) {
 					) : parsedPayload ? (
 						<div class="space-y-3">
 							<div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-100 rounded-xl p-3 text-xs text-gray-700 space-y-1">
-								<div class="font-semibold text-purple-700 text-sm">トークン: {parsedPayload.tokenAddress}</div>
 								<div class="break-all">おくりさき: {parsedPayload.receiver}</div>
-								<div>金額: {formatUnits(parsedPayload.amount, 18)}</div>
+								<div>きんがく: {formatUnits(parsedPayload.amount, 18)}JPYC</div>
 							</div>
 
 							<button

@@ -1,11 +1,13 @@
 import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, Route, hydrate, prerender as ssr, useLocation } from 'preact-iso';
+import { WagmiProvider } from 'wagmi';
 
 import { useIcpAuth } from './hooks/icpAuth';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Payment } from './pages/Payment';
 import { NotFound } from './pages/_404';
+import { wagmiConfig } from './config/wagmi';
 import './style.css';
 
 function AppShell() {
@@ -51,9 +53,11 @@ function AppShell() {
 
 export function App() {
 	return (
-		<LocationProvider>
-			<AppShell />
-		</LocationProvider>
+		<WagmiProvider config={wagmiConfig}>
+			<LocationProvider>
+				<AppShell />
+			</LocationProvider>
+		</WagmiProvider>
 	);
 }
 

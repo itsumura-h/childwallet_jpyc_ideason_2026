@@ -5,6 +5,7 @@ import EnvironmentPlugin, {
   type EnvVarDefaults,
 } from "vite-plugin-environment";
 import tailwindcss from "@tailwindcss/vite";
+import { icpBindgen } from "@icp-sdk/bindgen/plugins/vite";
 
 import { config } from "dotenv";
 config({ path: `${process.cwd()}/../../.env` });
@@ -42,6 +43,14 @@ export default defineConfig({
     },
   },
 	plugins: [
+		icpBindgen({
+			didFile: '../declarations/child_wallet_backend/child_wallet_backend.did',
+			outDir: './src/bindings/child_wallet_backend',
+		}),
+		icpBindgen({
+			didFile: '../declarations/internet_identity/internet_identity.did',
+			outDir: './src/bindings/internet_identity',
+		}),
 		preact({
 			prerender: {
 				enabled: true,

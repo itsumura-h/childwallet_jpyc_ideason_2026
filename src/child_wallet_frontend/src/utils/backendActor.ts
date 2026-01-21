@@ -1,31 +1,37 @@
 import { AuthClient } from '@icp-sdk/auth/client';
 import { HttpAgent } from '@icp-sdk/core/agent';
-import type { _SERVICE as TEcdsaBackendService } from '../../../declarations/child_wallet_backend/child_wallet_backend.did';
-import { canisterId as tEcdsaBackendCanisterId, createActor } from '../../../declarations/child_wallet_backend';
+import { canisterId } from '../../../declarations/child_wallet_backend';
+import {createActor, type Child_wallet_backend } from "../bindings/child_wallet_backend/child_wallet_backend";
 
-export const createBackendActor = async (authClient: AuthClient): Promise<TEcdsaBackendService> => {
+export type BackendActor = Child_wallet_backend;
+
+export const createBackendActor = async (authClient: AuthClient): Promise<Child_wallet_backend> => {
   const identity = authClient.getIdentity();
   // Vite開発環境ではデフォルトで3000オリジンに向かうため、DFXホストを明示する
   const host = import.meta.env.VITE_DFX_HOST ?? 'http://127.0.0.1:4943';
+  
+  const isDev = import.meta.env.DEV || import.meta.env.MODE !== 'production';
+  
+  console.debug('[backendActor] Creating HttpAgent with host:', host, 'isDev:', isDev);
+  
+  // @icp-sdk/core/agent を使用
   const agent = await HttpAgent.create({ identity, host });
 
-  const isDev = import.meta.env.DEV || import.meta.env.MODE !== 'production';
   if (isDev) {
     try {
       console.info('[wallet] fetchRootKey against', host);
       await agent.fetchRootKey();
+      console.info('[wallet] fetchRootKey succeeded');
     } catch (error) {
-      console.error('[wallet] fetchRootKey failed - host may be wrong', error);
-      throw error;
+      console.warn('[wallet] fetchRootKey failed but continuing (this is expected in local dev)', error);
+      // 開発環境では失敗しても続行
+      // ローカル DFX では証明書が自己署名であるため、検証エラーが起こる場合がある
     }
   }
 
-  // The declarations were generated with @dfinity/agent, but we're using @icp-sdk/core/agent
-  // Both HttpAgent implementations are compatible at runtime despite type differences
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const actor = createActor(tEcdsaBackendCanisterId, {
-    agent: agent as any,
-  }) as TEcdsaBackendService;
+  const actor = createActor(canisterId, { agent });
 
+  console.debug('[backendActor] Actor created for canister:', canisterId);
+  
   return actor;
 };

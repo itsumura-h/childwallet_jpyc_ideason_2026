@@ -8,8 +8,10 @@
 	},
 	"dependencies": {
 		"@icp-sdk/auth": "^5.0.0",
+		"@icp-sdk/bindgen": "^0.2.1",
 		"@icp-sdk/core": "^5.0.0",
 		"@noble/curves": "^2.0.1",
+		"candid": "link:@icp-sdk/core/candid",
 		"html5-qrcode": "^2.3.8",
 		"preact": "^10.26.9",
 		"preact-iso": "^2.11.1",
