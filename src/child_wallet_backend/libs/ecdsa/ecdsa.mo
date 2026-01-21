@@ -47,13 +47,13 @@ module {
     };
   };
 
-  public func sign(_caller : Principal, message : Blob) : async [Nat8] {
+  public func sign(_caller : Principal, message : Blob, index: Nat32) : async [Nat8] {
     let caller = Principal.toBlob(_caller);
     try {
       // Cycles.add(25_000_000_000);
       let { signature } = await ic.sign_with_ecdsa({
         message_hash = message;
-        derivation_path = derivation_path_for(caller, 0 : Nat32);
+        derivation_path = derivation_path_for(caller, index);
         key_id = { curve = #secp256k1; name = "dfx_test_key" };
       });
       return Blob.toArray(signature);
