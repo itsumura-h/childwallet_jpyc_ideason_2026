@@ -102,20 +102,20 @@ export function Payment({ auth }: PaymentProps) {
 	const [parsedPayload, setParsedPayload] = useState<ParsedTransferPayload | null>(null);
 	const [payloadError, setPayloadError] = useState<string | null>(null);
 	const [isSending, setIsSending] = useState(false);
-	const [sendStatus, setSendStatus] = useState<string | null>(null);
+	const [sendStatus, setSendStatus] = useState("");
 	const [sendError, setSendError] = useState<string | null>(null);
 	const [txHash, setTxHash] = useState<Hex | null>(null);
 
 	useEffect(() => {
+		if (!scanResult) {
+			return;
+		}
+
 		setParsedPayload(null);
 		setPayloadError(null);
 		setSendStatus(null);
 		setSendError(null);
 		setTxHash(null);
-
-		if (!scanResult) {
-			return;
-		}
 
 		try {
 			const parsed = parseErc20TransferPayload(scanResult);
@@ -321,8 +321,9 @@ export function Payment({ auth }: PaymentProps) {
 				gasUsed: receipt.gasUsed?.toString(),
 			});
 			
-			setSendStatus('送金が完了しました！');
-			route('/home');
+			setSendStatus('🎉 そうしん かんりょう！');
+			setManualInput('');
+			setScanResult(null);
 		} catch (error) {
 			console.error('[Payment] Error during transaction:', error);
 			console.error('[Payment] Error type:', error?.constructor?.name);
@@ -373,20 +374,13 @@ export function Payment({ auth }: PaymentProps) {
 						<div id={QR_REGION_ID} class="min-h-[320px]" />
 					</div>
 
-					<div class="flex gap-3">
+					<div class="gap-3">
 						<button
 							type="button"
 							onClick={() => setRescanKey((v) => v + 1)}
-							class="flex-1 py-3 px-4 bg-gradient-to-r from-green-400 to-blue-400 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition transform"
+							class="w-full py-3 px-4 bg-gradient-to-r from-green-400 to-blue-400 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition transform"
 						>
 							🔄 もう一度よみとる
-						</button>
-						<button
-							type="button"
-							onClick={() => route('/home')}
-							class="flex-1 py-3 px-4 bg-gradient-to-r from-purple-400 to-pink-400 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition transform"
-						>
-							🏠 もどる
 						</button>
 					</div>
 				</div>
@@ -434,18 +428,20 @@ export function Payment({ auth }: PaymentProps) {
 								<div>きんがく: {formatUnits(parsedPayload.amount, 18)}JPYC</div>
 							</div>
 
-							<button
-								type="button"
-								disabled={isSending}
-								onClick={handleSend}
-								class={`w-full py-3 px-4 rounded-xl font-bold active:scale-95 transition transform ${
-									isSending
-										? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-										: 'bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 text-white shadow-lg'
-								}`}
-							>
-								{isSending ? 'おくってるよ...' : '🚀 この内容でおくる'}
-							</button>
+							{!txHash ? (
+								<button
+									type="button"
+									disabled={isSending}
+									onClick={handleSend}
+									class={`w-full py-3 px-4 rounded-xl font-bold active:scale-95 transition transform ${
+										isSending
+											? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+											: 'bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 text-white shadow-lg'
+									}`}
+								>
+									{isSending ? 'おくってるよ...' : '🚀 この内容でおくる'}
+								</button>
+							) : null}
 
 							{sendStatus ? (
 								<div class="text-xs text-purple-700 bg-purple-50 border border-purple-100 rounded-xl p-3">
@@ -470,11 +466,11 @@ export function Payment({ auth }: PaymentProps) {
 
 				<button
 					type="button"
-					onClick={auth.logout}
+					onClick={() => route('/home')}
 					class="w-full py-3 px-4 bg-gradient-to-r from-red-400 to-pink-400 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition transform"
 				>
-					<span class="text-xl mr-2">👋</span>
-					ログアウト
+					<span class="text-xl mr-2">🏠</span>
+					もどる
 				</button>
 			</div>
 		</div>

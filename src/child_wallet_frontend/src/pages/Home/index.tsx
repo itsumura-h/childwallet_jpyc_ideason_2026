@@ -6,6 +6,7 @@ import type { UseIcpAuthResult } from '../../hooks/icpAuth';
 import { publicClient } from '../../hooks/client';
 import { JPYC_ABI, JPYC_ADDRES_LIST } from '../../hooks/erc20';
 import { useEvmAddress } from '../../hooks/useEvmAddress';
+import jpycLogo from '../../assets/jpyc.svg';
 
 type HomeProps = {
 	auth: UseIcpAuthResult;
@@ -99,7 +100,6 @@ export function Home({ auth }: HomeProps) {
 								</div>
 							) : evm.evmAddress ? (
 								<div>
-									<p class="text-xs text-gray-600 mb-2">コピーして つかおう！</p>
 									<p class="font-mono text-sm text-purple-700 font-bold break-all">
 										{evm.evmAddress}
 									</p>
@@ -162,7 +162,7 @@ export function Home({ auth }: HomeProps) {
 								<p class="text-sm text-gray-500 font-semibold">ETH</p>
 								<p class="text-xl font-bold text-blue-700">
 									{balances.eth !== null
-										? `${formatEther(balances.eth)} ETH`
+										? `${Number(formatEther(balances.eth)).toFixed(3)} ETH`
 										: isBalanceLoading
 											? '読み込み中...'
 											: evm.evmAddress
@@ -173,7 +173,7 @@ export function Home({ auth }: HomeProps) {
 							<span class="text-3xl">⛽️</span>
 						</div>
 
-						<div class="flex items-center justify-between bg-gradient-to-r from-yellow-50 via-green-50 to-blue-50 rounded-2xl p-4 border border-green-100">
+							<div class="flex items-center justify-between bg-gradient-to-r from-yellow-50 via-green-50 to-blue-50 rounded-2xl p-4 border border-green-100">
 							<div class="space-y-1">
 								<p class="text-sm text-gray-500 font-semibold">JPYC</p>
 								<p class="text-xl font-bold text-green-700">
@@ -191,8 +191,8 @@ export function Home({ auth }: HomeProps) {
 									<p class="text-[11px] text-red-500">VITE_JPYC_ADDRESS を設定してね</p>
 								) : null}
 							</div>
-							<span class="text-3xl">💱</span>
-						</div>
+								<img src={jpycLogo} alt="JPYC" class="h-9 w-9" />
+							</div>
 
 						<p class="text-[11px] text-gray-500 text-right">
 							{lastUpdated ? `最終更新: ${new Date(lastUpdated).toLocaleTimeString()}` : '10秒ごとに自動更新するよ'}
