@@ -25,10 +25,10 @@ persistent actor {
   };
 
   public shared (msg) func sign(message : Blob, index: Nat32) : async schema.SignatureReply {
-    return await signFn.invoke(msg.caller, message, index);
+    return await signFn.invoke(storage.state, msg.caller, message, index);
   };
 
   public shared (msg) func signText(message : Text, index: Nat32) : async schema.SignatureReply {
-    return await signTextFn.invoke(msg.caller, message, index);
+    return await signTextFn.invoke(storage.state, msg.caller, message, index);
   };
 };
