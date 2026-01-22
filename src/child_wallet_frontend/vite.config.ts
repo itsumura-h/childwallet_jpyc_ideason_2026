@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import preact from "@preact/preset-vite";
-import { fileURLToPath, URL } from "url";
 import EnvironmentPlugin, {
   type EnvVarDefaults,
 } from "vite-plugin-environment";
