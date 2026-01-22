@@ -1,41 +1,87 @@
-import { createConfig, http, useChainId } from 'wagmi';
+import { http } from 'wagmi';
 import type { Chain } from 'viem';
-import { anvil, sepolia } from 'viem/chains';
+import { sepolia, anvil } from 'wagmi/chains';
 
-const ANVIL_RPC_URL = 'http://localhost:8545';
 
-const anvilWithRpc: Chain = {
-	...anvil,
-	rpcUrls: {
-		...anvil.rpcUrls,
-		default: {
-			...anvil.rpcUrls.default,
-			http: [ANVIL_RPC_URL],
-		},
-		public: {
-			...anvil.rpcUrls.public,
-			http: [ANVIL_RPC_URL],
-		},
-	},
-};
+// Anvilのカスタム設定 (localhost:8545)
+const anvilRpcUrl = "http://localhost:8545";
 
+const anvilCustom = {
+  ...anvil,
+  rpcUrls: {
+    ...anvil.rpcUrls,
+    default: {
+      http: [anvilRpcUrl],
+    },
+    public: {
+      http: [anvilRpcUrl],
+    },
+  },
+} as const;
+
+const sepoliaRpcUrl = "https://eth-sepolia-testnet.api.pocket.network"
+const sepoliaCustom = {
+  ...sepolia,
+  rpcUrls: {
+    ...sepolia.rpcUrls,
+    default: {
+      http: [sepoliaRpcUrl],
+    },
+  },
+} as const;
+/**
+ * wagmi 用チェーン設定（AppKitProvider で使用）
+ * 
+ * - Sepolia: Ethereum テストネット（本番に近い）
+ * - Anvil: ローカル開発用ノード (http://localhost:8545)
+ * 
+ * @note AppKitProvider の wagmiConfig.chains で使用される
+ */
+export const WAGMI_CHAINS = [
+  sepoliaCustom,
+  anvilCustom,
+] as const;
+
+/**
+ * サポート対象チェーン一覧（チェーン ID をキーとした検索用マップ）
+ * 
+ * ChainSelector、ethClient 等で使用される
+ */
 export const SUPPORTED_CHAINS: Record<number, Chain> = {
-	[anvilWithRpc.id]: anvilWithRpc,
-	[sepolia.id]: sepolia,
+  [sepolia.id]: sepoliaCustom,
+  [anvil.id]: anvilCustom,
 };
 
-export const DEFAULT_CHAIN_ID = anvilWithRpc.id;
-export const DEFAULT_RPC_URL = ANVIL_RPC_URL;
+export const WAGMI_TRANSPORTS = {
+  [sepolia.id]: http(sepoliaRpcUrl),
+  [anvil.id]: http(anvilRpcUrl),
+} as const;
 
-export const wagmiConfig = createConfig({
-	chains: Object.values(SUPPORTED_CHAINS),
-	transports: {
-		[anvilWithRpc.id]: http(ANVIL_RPC_URL),
-		[sepolia.id]: http(),
-	},
-});
 
-export const getChainConfig = (chainId: number): Chain | null => SUPPORTED_CHAINS[chainId] ?? null;
+/**
+ * wagmiから現在接続中のチェーンIDを取得するカスタムフック
+ * 
+ * @returns 現在のチェーンID（wagmiから取得）
+ */
+export function useCurrentChainId(): number {
+  const chainId = localStorage.getItem('chainId');
+  return chainId ? parseInt(chainId) : DEFAULT_CHAIN_ID;
+}
+
+/**
+ * チェーンIDからチェーン設定を取得
+ */
+export function getChainConfig(chainId: number): Chain {
+  return SUPPORTED_CHAINS[chainId];
+}
+
+/**
+ * チェーンIDのリストを取得
+ */
+export function getChainIds(): number[] {
+  return Object.keys(SUPPORTED_CHAINS).map((key: string) => parseInt(key));
+}
+
 
 export const getRpcUrlForChain = (chainId: number): string | null => {
 	const chain = getChainConfig(chainId);
@@ -43,7 +89,6 @@ export const getRpcUrlForChain = (chainId: number): string | null => {
 	return url ?? null;
 };
 
-export const useCurrentChainId = (): number => {
-	const chainId = useChainId();
-	return chainId || DEFAULT_CHAIN_ID;
-};
+
+export const DEFAULT_CHAIN_ID = sepolia.id;
+export const DEFAULT_RPC_URL = sepoliaRpcUrl;
