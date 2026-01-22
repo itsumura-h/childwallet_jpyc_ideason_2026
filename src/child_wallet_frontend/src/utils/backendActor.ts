@@ -1,7 +1,8 @@
 import { AuthClient } from '@icp-sdk/auth/client';
 import { HttpAgent } from '@icp-sdk/core/agent';
-import { canisterId } from '../../../declarations/child_wallet_backend';
 import {createActor, type Child_wallet_backend } from "../bindings/child_wallet_backend/child_wallet_backend";
+
+const canisterId = import.meta.env.VITE_CANISTER_ID_CHILD_WALLET_BACKEND;
 
 export type BackendActor = Child_wallet_backend;
 
