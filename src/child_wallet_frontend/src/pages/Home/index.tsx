@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { formatEther, formatUnits, getAddress, type Address } from 'viem';
-import { anvil } from 'viem/chains';
 import type { UseIcpAuthResult } from '../../hooks/icpAuth';
-import { publicClient } from '../../hooks/client';
+import { getPublicClient } from '../../hooks/client';
 import { JPYC_ABI, JPYC_ADDRES_LIST } from '../../hooks/erc20';
 import { useEvmAddress } from '../../hooks/useEvmAddress';
+import { DEFAULT_CHAIN_ID, SUPPORTED_CHAINS, useCurrentChainId } from '../../config/wagmi';
 import jpycLogo from '../../assets/jpyc.svg';
 
 type HomeProps = {
@@ -17,26 +17,41 @@ type BalanceState = {
 	jpyc: bigint | null;
 };
 
-const DEFAULT_JPYC_ADDRESS = JPYC_ADDRES_LIST[anvil.id] as Address;
-
 export function Home({ auth }: HomeProps) {
 	const evm = useEvmAddress(auth);
 	const { route } = useLocation();
+	const currentChainId = useCurrentChainId();
+	const [selectedChainId, setSelectedChainId] = useState<number>(currentChainId ?? DEFAULT_CHAIN_ID);
 	const [balances, setBalances] = useState<BalanceState>({ eth: null, jpyc: null });
 	const [balanceError, setBalanceError] = useState<string | null>(null);
 	const [isBalanceLoading, setIsBalanceLoading] = useState(false);
 	const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
+	const chainOptions = useMemo(
+		() => Object.values(SUPPORTED_CHAINS).map((chain) => ({ id: chain.id, name: chain.name })),
+		[],
+	);
+
+	useEffect(() => {
+		if (!currentChainId) {
+			return;
+		}
+		setSelectedChainId(currentChainId);
+	}, [currentChainId]);
+
+	const selectedPublicClient = useMemo(() => getPublicClient(selectedChainId), [selectedChainId]);
+
 	const jpycAddress = useMemo<Address | null>(() => {
 		const raw = import.meta.env.VITE_JPYC_ADDRESS;
-		const candidate = typeof raw === 'string' && raw.trim().length > 0 ? raw : DEFAULT_JPYC_ADDRESS;
+		const chainSpecific = JPYC_ADDRES_LIST[selectedChainId];
+		const candidate = typeof raw === 'string' && raw.trim().length > 0 ? raw : chainSpecific;
 
 		try {
 			return getAddress(candidate);
 		} catch {
 			return null;
 		}
-	}, []);
+	}, [selectedChainId]);
 
 	const fetchBalances = useCallback(async () => {
 		if (!evm.evmAddress) {
@@ -47,9 +62,9 @@ export function Home({ auth }: HomeProps) {
 		setBalanceError(null);
 
 		try {
-			const ethBalancePromise = publicClient.getBalance({ address: evm.evmAddress });
+			const ethBalancePromise = selectedPublicClient.getBalance({ address: evm.evmAddress });
 			const jpycBalancePromise = jpycAddress
-				? publicClient.readContract({
+				? selectedPublicClient.readContract({
 						address: jpycAddress,
 						abi: JPYC_ABI,
 						functionName: 'balanceOf',
@@ -69,7 +84,7 @@ export function Home({ auth }: HomeProps) {
 		} finally {
 			setIsBalanceLoading(false);
 		}
-	}, [evm.evmAddress, jpycAddress]);
+	}, [evm.evmAddress, jpycAddress, selectedPublicClient]);
 
 	useEffect(() => {
 		if (!evm.evmAddress || evm.isLoading) {
@@ -84,9 +99,38 @@ export function Home({ auth }: HomeProps) {
 		return () => clearInterval(timer);
 	}, [evm.evmAddress, evm.isLoading, fetchBalances]);
 
+	useEffect(() => {
+		setBalances({ eth: null, jpyc: null });
+		setLastUpdated(null);
+		setBalanceError(null);
+	}, [selectedChainId]);
+
 	return (
 		<div class="min-h-screen w-full bg-gradient-to-b from-green-300 via-blue-300 to-purple-300 p-4 safe-area flex flex-col items-center justify-start">
 			<div class="w-full max-w-sm pt-6 space-y-5">
+				<div class="bg-white rounded-3xl shadow-2xl p-4 flex items-center justify-between gap-3">
+					<div class="space-y-1">
+						<p class="text-sm text-gray-500 font-semibold">⛓️ つかうチェーン</p>
+						<p class="text-lg font-bold text-purple-700">
+							{chainOptions.find((chain) => chain.id === selectedChainId)?.name ?? '未対応のチェーン'}
+						</p>
+					</div>
+					<select
+						class="w-36 rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-300"
+						value={selectedChainId}
+						onChange={(event) => {
+							const nextId = Number((event.target as HTMLSelectElement).value);
+							setSelectedChainId(nextId);
+							localStorage.setItem('chainId', nextId.toString());
+						}}
+					>
+						{chainOptions.map((chain) => (
+							<option value={chain.id} key={chain.id}>
+								{chain.name}
+							</option>
+						))}
+					</select>
+				</div>
 
 				{/* メインカード - ウォレットアドレス表示 */}
 				<div class="bg-white rounded-3xl shadow-2xl p-6">
@@ -173,7 +217,7 @@ export function Home({ auth }: HomeProps) {
 							<span class="text-3xl">⛽️</span>
 						</div>
 
-							<div class="flex items-center justify-between bg-gradient-to-r from-yellow-50 via-green-50 to-blue-50 rounded-2xl p-4 border border-green-100">
+						<div class="flex items-center justify-between bg-gradient-to-r from-yellow-50 via-green-50 to-blue-50 rounded-2xl p-4 border border-green-100">
 							<div class="space-y-1">
 								<p class="text-sm text-gray-500 font-semibold">JPYC</p>
 								<p class="text-xl font-bold text-green-700">
@@ -188,11 +232,11 @@ export function Home({ auth }: HomeProps) {
 													: 'アドレス未取得'}
 								</p>
 								{!jpycAddress ? (
-									<p class="text-[11px] text-red-500">VITE_JPYC_ADDRESS を設定してね</p>
+									<p class="text-[11px] text-red-500">このチェーンの JPYC アドレスが見つからないよ</p>
 								) : null}
 							</div>
-								<img src={jpycLogo} alt="JPYC" class="h-9 w-9" />
-							</div>
+							<img src={jpycLogo} alt="JPYC" class="h-9 w-9" />
+						</div>
 
 						<p class="text-[11px] text-gray-500 text-right">
 							{lastUpdated ? `最終更新: ${new Date(lastUpdated).toLocaleTimeString()}` : '10秒ごとに自動更新するよ'}

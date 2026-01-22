@@ -27,6 +27,16 @@ const anvilCustom = {
   },
 } as const;
 
+const sepoliaRpcUrl = "https://eth-sepolia-testnet.api.pocket.network"
+const sepoliaCustom = {
+  ...sepolia,
+  rpcUrls: {
+    ...sepolia.rpcUrls,
+    default: {
+      http: [sepoliaRpcUrl],
+    },
+  },
+} as const;
 /**
  * wagmi 用チェーン設定（AppKitProvider で使用）
  * 
@@ -36,7 +46,7 @@ const anvilCustom = {
  * @note AppKitProvider の wagmiConfig.chains で使用される
  */
 export const WAGMI_CHAINS = [
-  sepolia,
+  sepoliaCustom,
   anvilCustom,
 ] as const;
 
@@ -46,12 +56,12 @@ export const WAGMI_CHAINS = [
  * ChainSelector、ethClient 等で使用される
  */
 export const SUPPORTED_CHAINS: Record<number, Chain> = {
-  [sepolia.id]: sepolia,
+  [sepolia.id]: sepoliaCustom,
   [anvil.id]: anvilCustom,
 };
 
 export const WAGMI_TRANSPORTS = {
-  [sepolia.id]: http(),
+  [sepolia.id]: http(sepoliaRpcUrl),
   [anvil.id]: http(anvilRpcUrl),
 } as const;
 
